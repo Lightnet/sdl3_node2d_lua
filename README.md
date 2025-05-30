@@ -1,4 +1,4 @@
-# sdl3_opengl_node2d
+# sdl3_node2d_lua
 
 # License: MIT
 
@@ -21,16 +21,16 @@ sdl3_opengl_node2d/
 # Features
 
 - Node2D Editor:
-    - [x] Dragging: Drag nodes by left-clicking and moving the mouse.
-    - [x] Input/Output Ports: Green squares for input ports, red squares for output ports, with text labels (e.g., “In1”, “Out1”).
-    - [x] Connections:
-        - [x] Left-click a red output square, then a green input square to connect with a white line.
-        - [x] Middle-click a disconnect a specific connection.            
-    - [x] Node Addition: Right-click away from green squares to add a new node at the click position.
-    - [x] delete. drag and delete key.
-    - [x] Panning: Middle-click hold and drag to pan the view.
-    - [x] Zooming: Scroll wheel to zoom in/out (0.5x to 2.0x), centered on the mouse cursor.
-    - [x] Grid g key to toggle snap 
+    - [ ] Dragging: Drag nodes by left-clicking and moving the mouse.
+    - [ ] Input/Output Ports: Green squares for input ports, red squares for output ports, with text labels (e.g., “In1”, “Out1”).
+    - [ ] Connections:
+        - [ ] Left-click a red output square, then a green input square to connect with a white line.
+        - [ ] Middle-click a disconnect a specific connection.            
+    - [ ] Node Addition: Right-click away from green squares to add a new node at the click position.
+    - [ ] delete. drag and delete key.
+    - [ ] Panning: Middle-click hold and drag to pan the view.
+    - [ ] Zooming: Scroll wheel to zoom in/out (0.5x to 2.0x), centered on the mouse cursor.
+    - [ ] Grid g key to toggle snap 
     - [ ] Menus: Planned for node type selection and configuration.
     - [ ] Variables: Planned for node data storage.
     - [ ] Functions: Planned for node-based logic or scripting.
@@ -42,7 +42,6 @@ sdl3_opengl_node2d/
 - Cross-Platform Build: Configured with CMake for MinGW-w64, adaptable to other platforms.
 
     Does not have variables and functions. Just a simple node 2D with the connectors. 
-
 
 # Goals
 - Provide a minimal, working example of SDL3 and SDL_ttf for interactive 2D graphics.
