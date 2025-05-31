@@ -106,6 +106,35 @@ int main(int argc, char *argv[]) {
         // Clear screen
         glClear(GL_COLOR_BUFFER_BIT);
 
+        // Get square properties from Lua
+        lua_getglobal(L, "config");
+        lua_getfield(L, -1, "square");
+        if (lua_istable(L, -1)) {
+            lua_getfield(L, -1, "x");
+            float square_x = lua_isnumber(L, -1) ? (float)lua_tonumber(L, -1) : 400.0f;
+            lua_pop(L, 1);
+            lua_getfield(L, -1, "y");
+            float square_y = lua_isnumber(L, -1) ? (float)lua_tonumber(L, -1) : 300.0f;
+            lua_pop(L, 1);
+            lua_getfield(L, -1, "size");
+            float square_size = lua_isnumber(L, -1) ? (float)lua_tonumber(L, -1) : 100.0f;
+            lua_pop(L, 1);
+            lua_getfield(L, -1, "r");
+            float square_r = lua_isnumber(L, -1) ? (float)lua_tonumber(L, -1) : 1.0f;
+            lua_pop(L, 1);
+            lua_getfield(L, -1, "g");
+            float square_g = lua_isnumber(L, -1) ? (float)lua_tonumber(L, -1) : 0.0f;
+            lua_pop(L, 1);
+            lua_getfield(L, -1, "b");
+            float square_b = lua_isnumber(L, -1) ? (float)lua_tonumber(L, -1) : 0.0f;
+            lua_pop(L, 1);
+
+            // Render square
+            render_square(square_x, square_y, square_size, square_r, square_g, square_b, window);
+        }
+        lua_pop(L, 1); // Pop square table
+        lua_pop(L, 1); // Pop config table
+
         // Render text
         lua_getglobal(L, "config");
         lua_getfield(L, -1, "text");

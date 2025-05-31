@@ -29,6 +29,26 @@ void main() {
 }
 )";
 
+// Vertex shader for square (no texture coordinates)
+const char *squareVertexShaderSource = R"(
+#version 330 core
+layout (location = 0) in vec2 aPos;
+uniform mat4 projection;
+void main() {
+    gl_Position = projection * vec4(aPos, 0.0, 1.0);
+}
+)";
+
+// Fragment shader for square (solid color)
+const char *squareFragmentShaderSource = R"(
+#version 330 core
+out vec4 FragColor;
+uniform vec3 color;
+void main() {
+    FragColor = vec4(color, 1.0);
+}
+)";
+
 SDL_GLContext init_opengl(SDL_Window *window) {
     // Set OpenGL attributes
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -70,8 +90,8 @@ void render_text(TTF_Font *font, const char *text, SDL_Window *window) {
     }
 
     // Log surface format for debugging
-    SDL_Log("Surface format: %s", SDL_GetPixelFormatName(textSurface->format));
-    SDL_Log("Surface dimensions: %dx%d", textSurface->w, textSurface->h);
+    // SDL_Log("Surface format: %s", SDL_GetPixelFormatName(textSurface->format));
+    // SDL_Log("Surface dimensions: %dx%d", textSurface->w, textSurface->h);
 
     // Convert surface to RGBA32
     SDL_Surface *convertedSurface = SDL_ConvertSurface(textSurface, SDL_PIXELFORMAT_RGBA32);
@@ -201,4 +221,105 @@ void render_text(TTF_Font *font, const char *text, SDL_Window *window) {
     glDeleteProgram(shaderProgram);
     glDeleteTextures(1, &texture);
     SDL_DestroySurface(convertedSurface);
+}
+
+
+void render_square(float x, float y, float size, float r, float g, float b, SDL_Window *window) {
+    // Get window size for projection
+    int win_width, win_height;
+    SDL_GetWindowSize(window, &win_width, &win_height);
+
+    // Create orthographic projection matrix
+    float ortho[16] = {
+        2.0f / win_width, 0.0f, 0.0f, 0.0f,
+        0.0f, -2.0f / win_height, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        -1.0f, 1.0f, 0.0f, 1.0f
+    };
+
+    // Compile shaders
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &squareVertexShaderSource, NULL);
+    glCompileShader(vertexShader);
+    GLint success;
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        char infoLog[512];
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        SDL_Log("Square vertex shader compilation failed: %s", infoLog);
+        return;
+    }
+
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &squareFragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        char infoLog[512];
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        SDL_Log("Square fragment shader compilation failed: %s", infoLog);
+        glDeleteShader(vertexShader);
+        return;
+    }
+
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        char infoLog[512];
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        SDL_Log("Square shader program linking failed: %s", infoLog);
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        return;
+    }
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // Define square vertices (centered at x, y with given size)
+    float half_size = size / 2.0f;
+    float vertices[] = {
+        x - half_size, y - half_size, // Bottom-left
+        x + half_size, y - half_size, // Bottom-right
+        x + half_size, y + half_size, // Top-right
+        x - half_size, y + half_size  // Top-left
+    };
+    unsigned int indices[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    GLuint VAO, VBO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // Enable blending
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Render
+    glUseProgram(shaderProgram);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, ortho);
+    glUniform3f(glGetUniformLocation(shaderProgram, "color"), r, g, b);
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    // Clean up
+    glBindVertexArray(0);
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+    glDeleteProgram(shaderProgram);
 }
