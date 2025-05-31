@@ -11,11 +11,22 @@ sdl3_node2d_lua is a sample project demonstrating a 2D node-based editor using S
 
 ```text
 sdl3_node2d_lua/
+├── include
+│   ├── module_gl.h.c
+│   └── module_lua.h.c
+├── src/
+│   ├── main.c
+│   ├── module_gl.h.c
+│   └── module_lua.h.c
+├── build/ - build files
+├── docs/ - work in progress
+├── glad/ - library for opengl
+├── build.bat
 ├── CMakeLists.txt
 ├── Kenney Mini.ttf
-├── src/
-│   └── main.c
+├── README.md
 ├── run.bat
+├── script.lua
 ```
 
 # Features
@@ -64,10 +75,21 @@ sdl3_node2d_lua/
 ## Dependencies
 
 The following libraries are fetched and built via CMake’s FetchContent:
+- Lua: Version 5.4.7 ( lua script )
 - SDL3: Version 3.2.14 (window and graphics handling).
 - SDL_ttf: Version 3.2.2 (font rendering for SDL3).
 - FreeType: Version 2.13.3 (font engine for SDL_ttf).
 - Font: “Kenney Mini.ttf” (must be in the project root). https://kenney.nl/assets/kenney-fonts
+- Glad: Version 2.0.8 ( opengl )  https://gen.glad.sh https://github.com/Dav1dde/glad
+```
+# Added glad default
+# https://gen.glad.sh/
+    # - Generator: c
+    # - API: gl=3.3
+    # - Profile: Core
+    # - Options
+    #     - Generate a loader: Checked
+```
 
 ## MSYS2 Packages
 
@@ -190,3 +212,5 @@ Setup Instructions
 - Grok
     - work code
     - manual feed data and mistakes.
+- https://github.com/Dav1dde/glad
+    - examples
