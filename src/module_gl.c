@@ -47,11 +47,11 @@ uniform sampler2D textTexture;
 void main() {
     vec4 texColor = texture(textTexture, TexCoord);
     if (texColor.a < 0.1) discard; // Discard low-alpha pixels
-    FragColor = texColor;
+    FragColor = vec4(1.0, 1.0, 1.0, texColor.a); // White text
 }
 )";
 
-SDL_GLContext init_opengl(SDL_Window *window) {
+SDL_GLContext init_opengl_context(SDL_Window *window) {
     // Set OpenGL attributes
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -82,19 +82,22 @@ SDL_GLContext init_opengl(SDL_Window *window) {
     return gl_context;
 }
 
-void render_text(TTF_Font *font, const char *text, SDL_Window *window, float cam_x, float cam_y, float cam_scale) {
-    // Render text to surface
-    SDL_Color color = {255, 255, 255, 255}; // White text
-    SDL_Surface *textSurface = TTF_RenderText_Blended(font, text, strlen(text), color);
-    if (!textSurface) {
-        SDL_Log("TTF_RenderText_Blended failed: %s", SDL_GetError());
+void render_text(const char *text, float x, float y, TTF_Font *font, SDL_Window *window, float cam_x, float cam_y, float cam_scale) {
+    if (!text || strlen(text) == 0) return;
+
+    // Render text to surface with background
+    SDL_Color text_color = {255, 255, 255, 255}; // White text
+    SDL_Color bg_color = {50, 50, 50, 200}; // Dark semi-transparent background
+    SDL_Surface *text_surface = TTF_RenderText_Shaded(font, text, strlen(text), text_color, bg_color);
+    if (!text_surface) {
+        SDL_Log("TTF_RenderText_Shaded failed: %s", SDL_GetError());
         return;
     }
 
     // Convert surface to RGBA32
-    SDL_Surface *convertedSurface = SDL_ConvertSurface(textSurface, SDL_PIXELFORMAT_RGBA32);
-    SDL_DestroySurface(textSurface);
-    if (!convertedSurface) {
+    SDL_Surface *converted_surface = SDL_ConvertSurface(text_surface, SDL_PIXELFORMAT_RGBA32);
+    SDL_DestroySurface(text_surface);
+    if (!converted_surface) {
         SDL_Log("SDL_ConvertSurface failed: %s", SDL_GetError());
         return;
     }
@@ -103,7 +106,7 @@ void render_text(TTF_Font *font, const char *text, SDL_Window *window, float cam
     GLuint texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, convertedSurface->w, convertedSurface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, convertedSurface->pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, converted_surface->w, converted_surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, converted_surface->pixels);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -122,77 +125,75 @@ void render_text(TTF_Font *font, const char *text, SDL_Window *window, float cam
     };
 
     // Compile shaders
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex_shader, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertex_shader);
     GLint success;
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        SDL_Log("Vertex shader compilation failed: %s", infoLog);
-        SDL_DestroySurface(convertedSurface);
+        char info_log[512];
+        glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
+        SDL_Log("Vertex shader compilation failed: %s", info_log);
+        SDL_DestroySurface(converted_surface);
         glDeleteTextures(1, &texture);
         return;
     }
 
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment_shader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragment_shader);
+    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        SDL_Log("Fragment shader compilation failed: %s", infoLog);
-        glDeleteShader(vertexShader);
-        SDL_DestroySurface(convertedSurface);
+        char info_log[512];
+        glGetShaderInfoLog(fragment_shader, 512, NULL, info_log);
+        SDL_Log("Fragment shader compilation failed: %s", info_log);
+        glDeleteShader(vertex_shader);
+        SDL_DestroySurface(converted_surface);
         glDeleteTextures(1, &texture);
         return;
     }
 
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    GLuint shader_program = glCreateProgram();
+    glAttachShader(shader_program, vertex_shader);
+    glAttachShader(shader_program, fragment_shader);
+    glLinkProgram(shader_program);
+    glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
     if (!success) {
-        char infoLog[512];
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        SDL_Log("Shader program linking failed: %s", infoLog);
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
-        SDL_DestroySurface(convertedSurface);
+        char info_log[512];
+        glGetProgramInfoLog(shader_program, 512, NULL, info_log);
+        SDL_Log("Shader program linking failed: %s", info_log);
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+        SDL_DestroySurface(converted_surface);
         glDeleteTextures(1, &texture);
         return;
     }
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
 
-    // Set up vertex data (top-left at (0, 10) in world space)
-    float x = 0.0f;
-    float y = 10.0f;
-    float w = (float)convertedSurface->w;
-    float h = (float)convertedSurface->h;
+    // Set up vertex data for text quad at (x, y)
+    float w = (float)converted_surface->w;
+    float h = (float)converted_surface->h;
     float vertices[] = {
-        x, y, 0.0f, 0.0f, // Top-left
-        x + w, y, 1.0f, 0.0f, // Top-right
+        x, y, 0.0f, 0.0f,         // Top-left
+        x + w, y, 1.0f, 0.0f,     // Top-right
         x + w, y + h, 1.0f, 1.0f, // Bottom-right
-        x, y + h, 0.0f, 1.0f // Bottom-left
+        x, y + h, 0.0f, 1.0f      // Bottom-left
     };
     unsigned int indices[] = {
         0, 1, 2,
         2, 3, 0
     };
 
-    GLuint VAO, VBO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    GLuint vao, vbo, ebo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
 
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
@@ -205,22 +206,22 @@ void render_text(TTF_Font *font, const char *text, SDL_Window *window, float cam
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Render
-    glUseProgram(shaderProgram);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, ortho);
-    glUniform1i(glGetUniformLocation(shaderProgram, "textTexture"), 0);
+    glUseProgram(shader_program);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program, "projection"), 1, GL_FALSE, ortho);
+    glUniform1i(glGetUniformLocation(shader_program, "textTexture"), 0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glBindVertexArray(VAO);
+    glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // Clean up
     glBindVertexArray(0);
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-    glDeleteProgram(shaderProgram);
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
+    glDeleteProgram(shader_program);
     glDeleteTextures(1, &texture);
-    SDL_DestroySurface(convertedSurface);
+    SDL_DestroySurface(converted_surface);
 }
 
 void render_square(float x, float y, float size, float r, float g, float b, SDL_Window *window, float cam_x, float cam_y, float cam_scale) {
@@ -237,47 +238,47 @@ void render_square(float x, float y, float size, float r, float g, float b, SDL_
     };
 
     // Compile shaders
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &squareVertexShaderSource, NULL);
-    glCompileShader(vertexShader);
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex_shader, 1, &squareVertexShaderSource, NULL);
+    glCompileShader(vertex_shader);
     GLint success;
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        SDL_Log("Square vertex shader compilation failed: %s", infoLog);
+        char info_log[512];
+        glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
+        SDL_Log("Square vertex shader: %s", info_log);
         return;
     }
 
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &squareFragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment_shader, 1, &squareFragmentShaderSource, NULL);
+    glCompileShader(fragment_shader);
+    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        SDL_Log("Square fragment shader compilation failed: %s", infoLog);
-        glDeleteShader(vertexShader);
+        char info_log[512];
+        glGetShaderInfoLog(fragment_shader, 512, NULL, info_log);
+        SDL_Log("Square fragment shader: %s", info_log);
+        glDeleteShader(vertex_shader);
         return;
     }
 
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    GLuint shader_program = glCreateProgram();
+    glAttachShader(shader_program, vertex_shader);
+    glAttachShader(shader_program, fragment_shader);
+    glLinkProgram(shader_program);
+    glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
     if (!success) {
-        char infoLog[512];
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        SDL_Log("Square shader program linking failed: %s", infoLog);
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
+        char info_log[512];
+        glGetProgramInfoLog(shader_program, 512, NULL, info_log);
+        SDL_Log("Square shader program: %s", info_log);
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
         return;
     }
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
 
-    // Define square vertices (centered at x, y with given size)
+    // Define square vertices (centered at x, y)
     float half_size = size / 2.0f;
     float vertices[] = {
         x - half_size, y - half_size, // Bottom-left
@@ -290,15 +291,15 @@ void render_square(float x, float y, float size, float r, float g, float b, SDL_
         2, 3, 0
     };
 
-    GLuint VAO, VBO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    GLuint vao, vbo, ebo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
 
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
@@ -309,18 +310,18 @@ void render_square(float x, float y, float size, float r, float g, float b, SDL_
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Render
-    glUseProgram(shaderProgram);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, ortho);
-    glUniform3f(glGetUniformLocation(shaderProgram, "color"), r, g, b);
-    glBindVertexArray(VAO);
+    glUseProgram(shader_program);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program, "projection"), 1, GL_FALSE, ortho);
+    glUniform3f(glGetUniformLocation(shader_program, "color"), r, g, b);
+    glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // Clean up
     glBindVertexArray(0);
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-    glDeleteProgram(shaderProgram);
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
+    glDeleteProgram(shader_program);
 }
 
 void render_circle(float x, float y, float radius, float r, float g, float b, SDL_Window *window, float cam_x, float cam_y, float cam_scale) {
@@ -337,45 +338,45 @@ void render_circle(float x, float y, float radius, float r, float g, float b, SD
     };
 
     // Compile shaders (use same as square)
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &squareVertexShaderSource, NULL);
-    glCompileShader(vertexShader);
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex_shader, 1, &squareVertexShaderSource, NULL);
+    glCompileShader(vertex_shader);
     GLint success;
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        SDL_Log("Circle vertex shader compilation failed: %s", infoLog);
+        char info_log[512];
+        glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
+        SDL_Log("Circle vertex shader: %s", info_log);
         return;
     }
 
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &squareFragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment_shader, 1, &squareFragmentShaderSource, NULL);
+    glCompileShader(fragment_shader);
+    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        SDL_Log("Circle fragment shader compilation failed: %s", infoLog);
-        glDeleteShader(vertexShader);
+        char info_log[512];
+        glGetShaderInfoLog(fragment_shader, 512, NULL, info_log);
+        SDL_Log("Circle fragment shader: %s", info_log);
+        glDeleteShader(vertex_shader);
         return;
     }
 
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    GLuint shader_program = glCreateProgram();
+    glAttachShader(shader_program, vertex_shader);
+    glAttachShader(shader_program, fragment_shader);
+    glLinkProgram(shader_program);
+    glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
     if (!success) {
-        char infoLog[512];
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        SDL_Log("Circle shader program linking failed: %s", infoLog);
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
+        char info_log[512];
+        glGetProgramInfoLog(shader_program, 512, NULL, info_log);
+        SDL_Log("Circle shader program: %s", info_log);
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
         return;
     }
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
 
     // Define circle vertices (triangle fan)
     const int segments = 32;
@@ -388,12 +389,12 @@ void render_circle(float x, float y, float radius, float r, float g, float b, SD
         vertices[(i + 1) * 2 + 1] = y + radius * sinf(angle);
     }
 
-    GLuint VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    GLuint vao, vbo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
 
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
@@ -404,15 +405,15 @@ void render_circle(float x, float y, float radius, float r, float g, float b, SD
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Render
-    glUseProgram(shaderProgram);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, ortho);
-    glUniform3f(glGetUniformLocation(shaderProgram, "color"), r, g, b);
-    glBindVertexArray(VAO);
+    glUseProgram(shader_program);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program, "projection"), 1, GL_FALSE, ortho);
+    glUniform3f(glGetUniformLocation(shader_program, "color"), r, g, b);
+    glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, segments + 2);
 
     // Clean up
     glBindVertexArray(0);
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteProgram(shaderProgram);
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteProgram(shader_program);
 }

@@ -118,6 +118,32 @@ float lua_utils_get_node_number(lua_State* L, int index, const char* field, floa
     return result;
 }
 
+// Get string from config.nodes[i].text
+const char* lua_utils_get_node_text(lua_State* L, int index, const char* default_value) {
+    lua_getglobal(L, "config");
+    if (!lua_istable(L, -1)) {
+        SDL_Log("Lua error: config is not a table");
+        lua_pop(L, 1);
+        return default_value;
+    }
+    lua_getfield(L, -1, "nodes");
+    if (!lua_istable(L, -1)) {
+        SDL_Log("Lua error: config.nodes is not a table");
+        lua_pop(L, 2);
+        return default_value;
+    }
+    lua_rawgeti(L, -1, index);
+    if (!lua_istable(L, -1)) {
+        SDL_Log("Lua error: config.nodes[%d] is not a table", index);
+        lua_pop(L, 3);
+        return default_value;
+    }
+    lua_getfield(L, -1, "text");
+    const char* result = lua_isstring(L, -1) ? lua_tostring(L, -1) : default_value;
+    lua_pop(L, 4); // Pop text, node, nodes, config
+    return result;
+}
+
 // Set number in config.nodes[i].field
 void lua_utils_set_node_number(lua_State* L, int index, const char* field, float value) {
     lua_getglobal(L, "config");

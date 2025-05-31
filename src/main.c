@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Initialize OpenGL
-    SDL_GLContext gl_context = init_opengl(window);
+    SDL_GLContext gl_context = init_opengl_context(window);
     if (!gl_context) {
         SDL_DestroyWindow(window);
         lua_utils_cleanup(L);
@@ -108,6 +108,7 @@ int main(int argc, char *argv[]) {
                     float node_x = lua_utils_get_node_number(L, i, "x", 400.0f);
                     float node_y = lua_utils_get_node_number(L, i, "y", 300.0f);
                     float node_size = lua_utils_get_node_number(L, i, "size", 100.0f);
+                    const char* node_text = lua_utils_get_node_text(L, i, "");
 
                     float half_size = node_size / 2.0f;
                     if (world_x >= node_x - half_size && world_x <= node_x + half_size &&
@@ -116,8 +117,8 @@ int main(int argc, char *argv[]) {
                         drag_offset_x = world_x - node_x;
                         drag_offset_y = world_y - node_y;
                         is_dragging = true;
-                        SDL_Log("Dragging started: node=%d, mouse=(%.1f, %.1f), world=(%.1f, %.1f), node=(%.1f, %.1f), bounds=[%.1f, %.1f]x[%.1f, %.1f], cam=(%.1f, %.1f, %.2f)",
-                                i, mouse_x, mouse_y, world_x, world_y, node_x, node_y,
+                        SDL_Log("Dragging started: node=%d, text='%s', mouse=(%.1f, %.1f), world=(%.1f, %.1f), node=(%.1f, %.1f), bounds=[%.1f, %.1f]x[%.1f, %.1f], cam=(%.1f, %.1f, %.2f)",
+                                i, node_text, mouse_x, mouse_y, world_x, world_y, node_x, node_y,
                                 node_x - half_size, node_x + half_size, node_y - half_size, node_y + half_size,
                                 cam_x, cam_y, cam_scale);
                     }
@@ -126,9 +127,10 @@ int main(int argc, char *argv[]) {
                     float node_x = lua_utils_get_node_number(L, 1, "x", 400.0f);
                     float node_y = lua_utils_get_node_number(L, 1, "y", 300.0f);
                     float node_size = lua_utils_get_node_number(L, 1, "size", 100.0f);
+                    const char* node_text = lua_utils_get_node_text(L, 1, "");
                     float half_size = node_size / 2.0f;
-                    SDL_Log("Click outside nodes: mouse=(%.1f, %.1f), world=(%.1f, %.1f), node1=(%.1f, %.1f), bounds=[%.1f, %.1f]x[%.1f, %.1f], cam=(%.1f, %.1f, %.2f)",
-                            mouse_x, mouse_y, world_x, world_y, node_x, node_y,
+                    SDL_Log("Click outside nodes: mouse=(%.1f, %.1f), world=(%.1f, %.1f), node1=(%.1f, %.1f), text='%s', bounds=[%.1f, %.1f]x[%.1f, %.1f], cam=(%.1f, %.1f, %.2f)",
+                            mouse_x, mouse_y, world_x, world_y, node_x, node_y, node_text,
                             node_x - half_size, node_x + half_size, node_y - half_size, node_y + half_size,
                             cam_x, cam_y, cam_scale);
                 }
@@ -231,13 +233,22 @@ int main(int argc, char *argv[]) {
             float node_r = lua_utils_get_node_number(L, i, "r", 1.0f);
             float node_g = lua_utils_get_node_number(L, i, "g", 0.0f);
             float node_b = lua_utils_get_node_number(L, i, "b", 0.0f);
+            const char* node_text = lua_utils_get_node_text(L, i, "");
 
+            // Render square
             render_square(node_x, node_y, node_size, node_r, node_g, node_b, window, cam_x, cam_y, cam_scale);
+
+            // Render node text (offset above square)
+            if (node_text[0] != '\0') {
+                float text_x = node_x - node_size / 4.0f; // Slight left offset for centering
+                float text_y = node_y - node_size / 2.0f - 20.0f; // Above the square
+                render_text(node_text, text_x, text_y, font, window, cam_x, cam_y, cam_scale);
+            }
         }
 
-        // Render text
+        // Render global text at top-left of world space
         const char *text = lua_utils_get_string(L, "config", "text", "Hello, World!");
-        render_text(font, text, window, cam_x, cam_y, cam_scale);
+        render_text(text, 10.0f, 10.0f, font, window, cam_x, cam_y, cam_scale);
 
         SDL_GL_SwapWindow(window);
     }

@@ -12,7 +12,8 @@ config = {
             size = 100,
             r = 1.0,
             g = 0.0,
-            b = 0.0
+            b = 0.0,
+            text = "Node 1"
         },
         { -- Node 2: Blue square
             x = 450,
@@ -20,7 +21,8 @@ config = {
             size = 80,
             r = 0.0,
             g = 0.0,
-            b = 1.0
+            b = 1.0,
+            text = "Node 2"
         }
     },
     camera = {

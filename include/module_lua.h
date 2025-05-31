@@ -26,6 +26,9 @@ int lua_utils_get_nodes_count(lua_State* L);
 // Get number from config.nodes[i].field (e.g., nodes[1].x)
 float lua_utils_get_node_number(lua_State* L, int index, const char* field, float default_value);
 
+// Get string from config.nodes[i].text (e.g., nodes[1].text)
+const char* lua_utils_get_node_text(lua_State* L, int index, const char* default_value);
+
 // Set number in config.nodes[i].field (e.g., nodes[1].x = value)
 void lua_utils_set_node_number(lua_State* L, int index, const char* field, float value);
 
