@@ -4,18 +4,28 @@ config = {
     window_height = 600,
     font_path = "Kenney Mini.ttf",
     font_size = 24,
-    text = "Drag, Pan, Zoom!",
-    square = {
-        x = 400, -- Center of the square (x-coordinate)
-        y = 300, -- Center of the square (y-coordinate)
-        size = 100, -- Side length of the square
-        r = 0.0, -- Red component (0.0 to 1.0)
-        g = 1.0, -- Green component
-        b = 0.0  -- Blue component
+    text = "Two Node2D Test",
+    nodes = {
+        { -- Node 1: Red square
+            x = 400,
+            y = 300,
+            size = 100,
+            r = 1.0,
+            g = 0.0,
+            b = 0.0
+        },
+        { -- Node 2: Blue square
+            x = 450,
+            y = 350,
+            size = 80,
+            r = 0.0,
+            g = 0.0,
+            b = 1.0
+        }
     },
     camera = {
-        x = 0, -- Camera x position
-        y = 0, -- Camera y position
-        scale = 1.0 -- Camera scale (1.0 = no zoom)
+        x = 0,
+        y = 0,
+        scale = 1.0
     }
 }

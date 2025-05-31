@@ -75,6 +75,7 @@ int main(int argc, char *argv[]) {
     bool is_panning = false;
     float drag_offset_x = 0.0f;
     float drag_offset_y = 0.0f;
+    int dragged_node_index = 0; // 1-based index of dragged node
     float pan_start_x = 0.0f;
     float pan_start_y = 0.0f;
 
@@ -100,31 +101,41 @@ int main(int argc, char *argv[]) {
                 float world_x = mouse_x / cam_scale + cam_x;
                 float world_y = mouse_y / cam_scale + cam_y;
 
-                // Get square properties
-                float square_x = lua_utils_get_number(L, "config", "square.x", 400.0f);
-                float square_y = lua_utils_get_number(L, "config", "square.y", 300.0f);
-                float square_size = lua_utils_get_number(L, "config", "square.size", 100.0f);
+                // Check nodes for click (last node has priority)
+                int node_count = lua_utils_get_nodes_count(L);
+                dragged_node_index = 0;
+                for (int i = 1; i <= node_count; i++) {
+                    float node_x = lua_utils_get_node_number(L, i, "x", 400.0f);
+                    float node_y = lua_utils_get_node_number(L, i, "y", 300.0f);
+                    float node_size = lua_utils_get_node_number(L, i, "size", 100.0f);
 
-                // Check if click is within square bounds
-                float half_size = square_size / 2.0f;
-                if (world_x >= square_x - half_size && world_x <= square_x + half_size &&
-                    world_y >= square_y - half_size && world_y <= square_y + half_size) {
-                    is_dragging = true;
-                    drag_offset_x = world_x - square_x;
-                    drag_offset_y = world_y - square_y;
-                    SDL_Log("Dragging started: mouse=(%.1f, %.1f), world=(%.1f, %.1f), square=(%.1f, %.1f), bounds=[%.1f, %.1f]x[%.1f, %.1f], cam=(%.1f, %.1f, %.2f)",
-                            mouse_x, mouse_y, world_x, world_y, square_x, square_y,
-                            square_x - half_size, square_x + half_size, square_y - half_size, square_y + half_size,
-                            cam_x, cam_y, cam_scale);
-                } else {
-                    SDL_Log("Click outside square: mouse=(%.1f, %.1f), world=(%.1f, %.1f), square=(%.1f, %.1f), bounds=[%.1f, %.1f]x[%.1f, %.1f], cam=(%.1f, %.1f, %.2f)",
-                            mouse_x, mouse_y, world_x, world_y, square_x, square_y,
-                            square_x - half_size, square_x + half_size, square_y - half_size, square_y + half_size,
+                    float half_size = node_size / 2.0f;
+                    if (world_x >= node_x - half_size && world_x <= node_x + half_size &&
+                        world_y >= node_y - half_size && world_y <= node_y + half_size) {
+                        dragged_node_index = i;
+                        drag_offset_x = world_x - node_x;
+                        drag_offset_y = world_y - node_y;
+                        is_dragging = true;
+                        SDL_Log("Dragging started: node=%d, mouse=(%.1f, %.1f), world=(%.1f, %.1f), node=(%.1f, %.1f), bounds=[%.1f, %.1f]x[%.1f, %.1f], cam=(%.1f, %.1f, %.2f)",
+                                i, mouse_x, mouse_y, world_x, world_y, node_x, node_y,
+                                node_x - half_size, node_x + half_size, node_y - half_size, node_y + half_size,
+                                cam_x, cam_y, cam_scale);
+                    }
+                }
+                if (!is_dragging && node_count > 0) {
+                    float node_x = lua_utils_get_node_number(L, 1, "x", 400.0f);
+                    float node_y = lua_utils_get_node_number(L, 1, "y", 300.0f);
+                    float node_size = lua_utils_get_node_number(L, 1, "size", 100.0f);
+                    float half_size = node_size / 2.0f;
+                    SDL_Log("Click outside nodes: mouse=(%.1f, %.1f), world=(%.1f, %.1f), node1=(%.1f, %.1f), bounds=[%.1f, %.1f]x[%.1f, %.1f], cam=(%.1f, %.1f, %.2f)",
+                            mouse_x, mouse_y, world_x, world_y, node_x, node_y,
+                            node_x - half_size, node_x + half_size, node_y - half_size, node_y + half_size,
                             cam_x, cam_y, cam_scale);
                 }
             }
             else if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) {
                 is_dragging = false;
+                dragged_node_index = 0;
             }
             else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_MIDDLE) {
                 is_panning = true;
@@ -148,9 +159,11 @@ int main(int argc, char *argv[]) {
                 float world_x = mouse_x / cam_scale + cam_x;
                 float world_y = mouse_y / cam_scale + cam_y;
 
-                // Update square position
-                lua_utils_set_number(L, "config", "square.x", world_x - drag_offset_x);
-                lua_utils_set_number(L, "config", "square.y", world_y - drag_offset_y);
+                // Update dragged node position
+                if (dragged_node_index > 0) {
+                    lua_utils_set_node_number(L, dragged_node_index, "x", world_x - drag_offset_x);
+                    lua_utils_set_node_number(L, dragged_node_index, "y", world_y - drag_offset_y);
+                }
             }
             else if (event.type == SDL_EVENT_MOUSE_MOTION && is_panning) {
                 // Get window size and camera properties
@@ -209,16 +222,18 @@ int main(int argc, char *argv[]) {
         float cam_y = lua_utils_get_number(L, "config", "camera.y", 0.0f);
         float cam_scale = lua_utils_get_number(L, "config", "camera.scale", 1.0f);
 
-        // Get square properties
-        float square_x = lua_utils_get_number(L, "config", "square.x", 400.0f);
-        float square_y = lua_utils_get_number(L, "config", "square.y", 300.0f);
-        float square_size = lua_utils_get_number(L, "config", "square.size", 100.0f);
-        float square_r = lua_utils_get_number(L, "config", "square.r", 1.0f);
-        float square_g = lua_utils_get_number(L, "config", "square.g", 0.0f);
-        float square_b = lua_utils_get_number(L, "config", "square.b", 0.0f);
+        // Render nodes
+        int node_count = lua_utils_get_nodes_count(L);
+        for (int i = 1; i <= node_count; i++) {
+            float node_x = lua_utils_get_node_number(L, i, "x", 400.0f);
+            float node_y = lua_utils_get_node_number(L, i, "y", 300.0f);
+            float node_size = lua_utils_get_node_number(L, i, "size", 100.0f);
+            float node_r = lua_utils_get_node_number(L, i, "r", 1.0f);
+            float node_g = lua_utils_get_node_number(L, i, "g", 0.0f);
+            float node_b = lua_utils_get_node_number(L, i, "b", 0.0f);
 
-        // Render square
-        render_square(square_x, square_y, square_size, square_r, square_g, square_b, window, cam_x, cam_y, cam_scale);
+            render_square(node_x, node_y, node_size, node_r, node_g, node_b, window, cam_x, cam_y, cam_scale);
+        }
 
         // Render text
         const char *text = lua_utils_get_string(L, "config", "text", "Hello, World!");
