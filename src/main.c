@@ -241,13 +241,11 @@ int main(int argc, char *argv[]) {
             // Render node text (centered above square)
             if (node_text[0] != '\0') {
                 int text_width, text_height;
-                if (TTF_GetStringSize(font, node_text, strlen(node_text), &text_width, &text_height)) {// return bool true
+                if (TTF_GetStringSize(font, node_text, strlen(node_text), &text_width, &text_height)) { // SDL 3.x return bool
                     float text_x = node_x - text_width / 2.0f; // Center horizontally
                     float text_y = node_y - node_size / 2.0f - text_height - 10.0f; // Above square
                     render_text(node_text, text_x, text_y, font, window, cam_x, cam_y, cam_scale);
                 } else {
-                    // global text and no node2d
-                    // TTF_GetStringSize failed for global text 'Two Node2D Test':
                     // SDL_Log("TTF_GetStringSize failed for text '%s': %s", node_text, SDL_GetError());
                     // Fallback: approximate centering
                     float text_x = node_x - node_size / 4.0f;
@@ -261,12 +259,12 @@ int main(int argc, char *argv[]) {
         const char *text = lua_utils_get_string(L, "config", "text", "Hello, World!");
         if (text[0] != '\0') {
             int text_width, text_height;
-            if (TTF_GetStringSize(font, text, strlen(text), &text_width, &text_height) == 0) {
+            if (TTF_GetStringSize(font, text, strlen(text), &text_width, &text_height)) { // SDL 3.x return bool
                 float text_x = 10.0f; // Keep at left edge
                 float text_y = 10.0f + text_height; // Adjust for baseline
                 render_text(text, text_x, text_y, font, window, cam_x, cam_y, cam_scale);
             } else {
-                SDL_Log("TTF_GetStringSize failed for global text '%s': %s", text, SDL_GetError());
+                // SDL_Log("TTF_GetStringSize failed for global text '%s': %s", text, SDL_GetError());
                 render_text(text, 10.0f, 10.0f, font, window, cam_x, cam_y, cam_scale);
             }
         }
