@@ -3,31 +3,6 @@
 #include <glad/gl.h>
 #include "module_gl.h"
 
-// Vertex shader source
-const char *vertexShaderSource = R"(
-#version 330 core
-layout (location = 0) in vec2 aPos;
-layout (location = 1) in vec2 aTexCoord;
-out vec2 TexCoord;
-uniform mat4 projection;
-void main() {
-    gl_Position = projection * vec4(aPos, 0.0, 1.0);
-    TexCoord = aTexCoord;
-}
-)";
-
-// Fragment shader source
-const char *fragmentShaderSource = R"(
-#version 330 core
-in vec2 TexCoord;
-out vec4 FragColor;
-uniform sampler2D textTexture;
-void main() {
-    vec4 texColor = texture(textTexture, TexCoord);
-    if (texColor.a < 0.1) discard; // Discard low-alpha pixels
-    FragColor = texColor;
-}
-)";
 
 // Vertex shader for square (no texture coordinates)
 const char *squareVertexShaderSource = R"(
@@ -48,6 +23,34 @@ void main() {
     FragColor = vec4(color, 1.0);
 }
 )";
+
+// Vertex shader for text
+const char *vertexShaderSource = R"(
+#version 330 core
+layout (location = 0) in vec2 aPos;
+layout (location = 1) in vec2 aTexCoord;
+out vec2 TexCoord;
+uniform mat4 projection;
+void main() {
+    gl_Position = projection * vec4(aPos, 0.0, 1.0);
+    TexCoord = aTexCoord;
+}
+)";
+
+// Fragment shader for text
+const char *fragmentShaderSource = R"(
+#version 330 core
+in vec2 TexCoord;
+out vec4 FragColor;
+uniform sampler2D textTexture;
+void main() {
+    vec4 texColor = texture(textTexture, TexCoord);
+    if (texColor.a < 0.1) discard; // Discard low-alpha pixels
+    FragColor = texColor;
+}
+)";
+
+
 
 SDL_GLContext init_opengl(SDL_Window *window) {
     // Set OpenGL attributes
@@ -80,7 +83,8 @@ SDL_GLContext init_opengl(SDL_Window *window) {
     return gl_context;
 }
 
-void render_text(TTF_Font *font, const char *text, SDL_Window *window) {
+
+void render_text(TTF_Font *font, const char *text, SDL_Window *window, float cam_x, float cam_y, float cam_scale) {
     // Render text to surface
     SDL_Color color = {255, 255, 255, 255}; // White text
     SDL_Surface *textSurface = TTF_RenderText_Blended(font, text, strlen(text), color);
@@ -89,13 +93,9 @@ void render_text(TTF_Font *font, const char *text, SDL_Window *window) {
         return;
     }
 
-    // Log surface format for debugging
-    // SDL_Log("Surface format: %s", SDL_GetPixelFormatName(textSurface->format));
-    // SDL_Log("Surface dimensions: %dx%d", textSurface->w, textSurface->h);
-
     // Convert surface to RGBA32
     SDL_Surface *convertedSurface = SDL_ConvertSurface(textSurface, SDL_PIXELFORMAT_RGBA32);
-    SDL_DestroySurface(textSurface); // Free original surface
+    SDL_DestroySurface(textSurface);
     if (!convertedSurface) {
         SDL_Log("SDL_ConvertSurface failed: %s", SDL_GetError());
         return;
@@ -115,12 +115,12 @@ void render_text(TTF_Font *font, const char *text, SDL_Window *window) {
     int win_width, win_height;
     SDL_GetWindowSize(window, &win_width, &win_height);
 
-    // Create orthographic projection matrix
+    // Create orthographic projection matrix with camera transform
     float ortho[16] = {
-        2.0f / win_width, 0.0f, 0.0f, 0.0f,
-        0.0f, -2.0f / win_height, 0.0f, 0.0f,
+        2.0f * cam_scale / win_width, 0.0f, 0.0f, 0.0f,
+        0.0f, -2.0f * cam_scale / win_height, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f,
-        -1.0f, 1.0f, 0.0f, 1.0f
+        -cam_x * 2.0f * cam_scale / win_width - 1.0f, cam_y * 2.0f * cam_scale / win_height + 1.0f, 0.0f, 1.0f
     };
 
     // Compile shaders
@@ -170,9 +170,9 @@ void render_text(TTF_Font *font, const char *text, SDL_Window *window) {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    // Set up vertex data
-    float x = (win_width - convertedSurface->w) / 2.0f; // Center horizontally
-    float y = (win_height - convertedSurface->h) / 2.0f; // Center vertically
+    // Set up vertex data (centered in window, adjusted for camera)
+    float x = (win_width - convertedSurface->w) / 2.0f;
+    float y = (win_height - convertedSurface->h) / 2.0f;
     float vertices[] = {
         x, y, 0.0f, 0.0f, // Top-left
         x + convertedSurface->w, y, 1.0f, 0.0f, // Top-right
@@ -224,17 +224,19 @@ void render_text(TTF_Font *font, const char *text, SDL_Window *window) {
 }
 
 
-void render_square(float x, float y, float size, float r, float g, float b, SDL_Window *window) {
-    // Get window size for projection
+
+
+void render_square(float x, float y, float size, float r, float g, float b, SDL_Window *window, float cam_x, float cam_y, float cam_scale) {
+    // Get window size
     int win_width, win_height;
     SDL_GetWindowSize(window, &win_width, &win_height);
 
-    // Create orthographic projection matrix
+    // Create orthographic projection matrix with camera transform
     float ortho[16] = {
-        2.0f / win_width, 0.0f, 0.0f, 0.0f,
-        0.0f, -2.0f / win_height, 0.0f, 0.0f,
+        2.0f * cam_scale / win_width, 0.0f, 0.0f, 0.0f,
+        0.0f, -2.0f * cam_scale / win_height, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f,
-        -1.0f, 1.0f, 0.0f, 1.0f
+        -cam_x * 2.0f * cam_scale / win_width - 1.0f, cam_y * 2.0f * cam_scale / win_height + 1.0f, 0.0f, 1.0f
     };
 
     // Compile shaders
@@ -323,3 +325,5 @@ void render_square(float x, float y, float size, float r, float g, float b, SDL_
     glDeleteBuffers(1, &EBO);
     glDeleteProgram(shaderProgram);
 }
+
+
