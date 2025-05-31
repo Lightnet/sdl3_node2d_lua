@@ -7,10 +7,10 @@
 
 # Project Overview
 
-sdl3_opengl_node2d is a sample project demonstrating a 2D node-based editor using SDL3, SDL_ttf, and FreeType. It renders a graphical interface with the "Kenney Mini" font and supports interactive node manipulation. Built for Windows using the MSYS2/MinGW-w64 environment, it serves as a foundation for developing node-based graphical applications, such as visual scripting or dataflow editors. The project uses SDL3’s software rendering for simplicity and portability.
+sdl3_node2d_lua is a sample project demonstrating a 2D node-based editor using SDL3, SDL_ttf, and FreeType. It renders a graphical interface with the "Kenney Mini" font and supports interactive node manipulation. Built for Windows using the MSYS2/MinGW-w64 environment, it serves as a foundation for developing node-based graphical applications, such as visual scripting or dataflow editors. The project uses SDL3’s software rendering for simplicity and portability.
 
 ```text
-sdl3_opengl_node2d/
+sdl3_node2d_lua/
 ├── CMakeLists.txt
 ├── Kenney Mini.ttf
 ├── src/
@@ -67,18 +67,9 @@ The following libraries are fetched and built via CMake’s FetchContent:
 - SDL3: Version 3.2.14 (window and graphics handling).
 - SDL_ttf: Version 3.2.2 (font rendering for SDL3).
 - FreeType: Version 2.13.3 (font engine for SDL_ttf).
-- Font: “Kenney Mini.ttf” (must be in the project root).
+- Font: “Kenney Mini.ttf” (must be in the project root). https://kenney.nl/assets/kenney-fonts
 
 ## MSYS2 Packages
-
-Install these packages in the MSYS2 MinGW 64-bit terminal:
-
-bash
-
-```bash
-pacman -Syu
-pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-g++ mingw-w64-x86_64-cmake mingw-w64-x86_64-make mingw-w64-x86_64-pkgconf
-```
 
 Setup Instructions
 1. Install MSYS2:
@@ -96,20 +87,21 @@ Setup Instructions
     ```
     pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-g++ mingw-w64-x86_64-cmake mingw-w64-x86_64-make mingw-w64-x86_64-pkgconf
     ```
+    Install packages for dev tool.
     
 3. Clone or Download the Project:
     - Clone with Git (if available):
         
         bash
         ```bash
-        git clone <repository-url>
-        cd sdl3_opengl_node2d
+        git clone https://github.com/Lightnet/sdl3_node2d_lua.git
+        cd sdl3_node2d_lua
         ```
         
     - Or download and extract the project ZIP, then navigate to the directory in the MSYS2 terminal.
         
 4. Ensure Font File:
-    - Verify that Kenney Mini.ttf is in the project root directory (sdl3_opengl_node2d/Kenney Mini.ttf).
+    - Verify that Kenney Mini.ttf is in the project root directory (sdl3_node2d_lua/Kenney Mini.ttf).
         
 5. Build the Project:
     - Create a build directory and run CMake:
@@ -193,7 +185,7 @@ Setup Instructions
 - OpenGL Integration: Optionally switch to OpenGL for enhanced rendering (if needed).
 
 # Credits:
-- blender Node 2D editor idea.
+- Blender Node 2D editor idea.
 - https://kenney.nl/assets/kenney-fonts
 - Grok
     - work code
