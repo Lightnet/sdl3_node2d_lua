@@ -234,9 +234,30 @@ int main(int argc, char *argv[]) {
             float node_g = lua_utils_get_node_number(L, i, "g", 0.0f);
             float node_b = lua_utils_get_node_number(L, i, "b", 0.0f);
             const char* node_text = lua_utils_get_node_text(L, i, "");
+            int inputs = lua_utils_get_node_connectors(L, i, "inputs", 0);
+            int outputs = lua_utils_get_node_connectors(L, i, "outputs", 0);
 
             // Render square
             render_square(node_x, node_y, node_size, node_r, node_g, node_b, window, cam_x, cam_y, cam_scale);
+
+            // Render input connectors (green circles on left)
+            float half_size = node_size / 2.0f;
+            float connector_spacing = 20.0f;
+            float connector_radius = 10.0f;
+            for (int j = 0; j < inputs; j++) {
+                float conn_y = node_y - half_size + (j * connector_spacing) + (inputs > 1 ? connector_spacing / 2.0f : 0.0f);
+                float conn_x = node_x - half_size;
+                render_circle(conn_x, conn_y, connector_radius, 0.0f, 1.0f, 0.0f, window, cam_x, cam_y, cam_scale);
+                SDL_Log("Node %d input %d at (%.1f, %.1f)", i, j+1, conn_x, conn_y);
+            }
+
+            // Render output connectors (yellow circles on right)
+            for (int j = 0; j < outputs; j++) {
+                float conn_y = node_y - half_size + (j * connector_spacing) + (outputs > 1 ? connector_spacing / 2.0f : 0.0f);
+                float conn_x = node_x + half_size;
+                render_circle(conn_x, conn_y, connector_radius, 1.0f, 1.0f, 0.0f, window, cam_x, cam_y, cam_scale);
+                SDL_Log("Node %d output %d at (%.1f, %.1f)", i, j+1, conn_x, conn_y);
+            }
 
             // Render node text (centered above square)
             if (node_text[0] != '\0') {
@@ -257,7 +278,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        // Render global text at top-left (optionally centered)
+        // Render global text at top-left
         const char *text = lua_utils_get_string(L, "config", "text", "Hello, World!");
         if (text[0] != '\0') {
             int text_width, text_height;
