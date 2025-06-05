@@ -21,8 +21,8 @@ nodes = {
         g = 0.0,
         b = 0.0,
         text = "Node 1",
-        inputs = 1,  -- One input connector
-        outputs = 1  -- One output connector
+        inputs = 1,
+        outputs = 1
     },
     {
         x = 586,
@@ -32,7 +32,11 @@ nodes = {
         g = 0.0,
         b = 1.0,
         text = "Node 2",
-        inputs = 1,  -- One input connector
-        outputs = 1  -- One output connector
+        inputs = 1,
+        outputs = 1
     }
+}
+
+connections = {
+    -- Example: { from_node=1, from_output=1, to_node=2, to_input=1 }
 }

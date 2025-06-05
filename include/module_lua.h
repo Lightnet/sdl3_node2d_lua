@@ -38,4 +38,16 @@ const char* lua_utils_get_node_text(lua_State *L, int node_index, const char *de
 // Get node connector counts
 int lua_utils_get_node_connectors(lua_State *L, int node_index, const char *key, int default_value);
 
+// Get connection count
+int lua_utils_get_connections_count(lua_State *L);
+
+// Get connection details
+void lua_utils_get_connection(lua_State *L, int conn_index, int *from_node, int *from_output, int *to_node, int *to_input);
+
+// Add connection
+void lua_utils_add_connection(lua_State *L, int from_node, int from_output, int to_node, int to_input);
+
+// Remove connections involving a connector
+void lua_utils_remove_connections(lua_State *L, int node_index, const char *type, int connector_index);
+
 #endif // MODULE_LUA_H

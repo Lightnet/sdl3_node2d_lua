@@ -4,6 +4,7 @@
 #include <lualib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h> // Added to define bool, true, false
 
 lua_State* lua_utils_init(const char *script_path) {
     lua_State *L = luaL_newstate();
@@ -155,4 +156,114 @@ int lua_utils_get_node_connectors(lua_State *L, int node_index, const char *key,
     int value = lua_isnumber(L, -1) ? (int)lua_tointeger(L, -1) : default_value;
     lua_pop(L, 3);
     return value;
+}
+
+int lua_utils_get_connections_count(lua_State *L) {
+    lua_getglobal(L, "connections");
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 1);
+        return 0;
+    }
+    int count = lua_rawlen(L, -1);
+    lua_pop(L, 1);
+    return count;
+}
+
+void lua_utils_get_connection(lua_State *L, int conn_index, int *from_node, int *from_output, int *to_node, int *to_input) {
+    lua_getglobal(L, "connections");
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 1);
+        *from_node = *from_output = *to_node = *to_input = 0;
+        return;
+    }
+    lua_rawgeti(L, -1, conn_index);
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 2);
+        *from_node = *from_output = *to_node = *to_input = 0;
+        return;
+    }
+    lua_getfield(L, -1, "from_node");
+    *from_node = lua_isnumber(L, -1) ? (int)lua_tointeger(L, -1) : 0;
+    lua_pop(L, 1);
+    lua_getfield(L, -1, "from_output");
+    *from_output = lua_isnumber(L, -1) ? (int)lua_tointeger(L, -1) : 0;
+    lua_pop(L, 1);
+    lua_getfield(L, -1, "to_node");
+    *to_node = lua_isnumber(L, -1) ? (int)lua_tointeger(L, -1) : 0;
+    lua_pop(L, 1);
+    lua_getfield(L, -1, "to_input");
+    *to_input = lua_isnumber(L, -1) ? (int)lua_tointeger(L, -1) : 0;
+    lua_pop(L, 2);
+}
+
+void lua_utils_add_connection(lua_State *L, int from_node, int from_output, int to_node, int to_input) {
+    lua_getglobal(L, "connections");
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 1);
+        lua_newtable(L);
+        lua_setglobal(L, "connections");
+        lua_getglobal(L, "connections");
+    }
+    int count = lua_rawlen(L, -1) + 1;
+    lua_newtable(L);
+    lua_pushinteger(L, from_node);
+    lua_setfield(L, -2, "from_node");
+    lua_pushinteger(L, from_output);
+    lua_setfield(L, -2, "from_output");
+    lua_pushinteger(L, to_node);
+    lua_setfield(L, -2, "to_node");
+    lua_pushinteger(L, to_input);
+    lua_setfield(L, -2, "to_input");
+    lua_rawseti(L, -2, count);
+    lua_pop(L, 1);
+}
+
+void lua_utils_remove_connections(lua_State *L, int node_index, const char *type, int connector_index) {
+    lua_getglobal(L, "connections");
+    if (!lua_istable(L, -1)) {
+        lua_pop(L, 1);
+        return;
+    }
+    int count = lua_rawlen(L, -1);
+    int new_count = 0;
+    lua_newtable(L); // New connections table
+    for (int i = 1; i <= count; i++) {
+        lua_rawgeti(L, -2, i);
+        if (lua_istable(L, -1)) {
+            lua_getfield(L, -1, "from_node");
+            int from_node = lua_tointeger(L, -1);
+            lua_pop(L, 1);
+            lua_getfield(L, -1, "from_output");
+            int from_output = lua_tointeger(L, -1);
+            lua_pop(L, 1);
+            lua_getfield(L, -1, "to_node");
+            int to_node = lua_tointeger(L, -1);
+            lua_pop(L, 1);
+            lua_getfield(L, -1, "to_input");
+            int to_input = lua_tointeger(L, -1);
+            lua_pop(L, 1);
+            bool keep = true;
+            if (strcmp(type, "input") == 0 && to_node == node_index && to_input == connector_index) {
+                keep = false;
+            } else if (strcmp(type, "output") == 0 && from_node == node_index && from_output == connector_index) {
+                keep = false;
+            }
+            if (keep) {
+                new_count++;
+                lua_newtable(L);
+                lua_pushinteger(L, from_node);
+                lua_setfield(L, -2, "from_node");
+                lua_pushinteger(L, from_output);
+                lua_setfield(L, -2, "from_output");
+                lua_pushinteger(L, to_node);
+                lua_setfield(L, -2, "to_node");
+                lua_pushinteger(L, to_input);
+                lua_setfield(L, -2, "to_input");
+                lua_rawseti(L, -3, new_count);
+            }
+        }
+        lua_pop(L, 1);
+    }
+    lua_setglobal(L, "connections");
+    lua_pop(L, 1);
 }
