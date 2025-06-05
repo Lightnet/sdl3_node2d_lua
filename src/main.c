@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Initialize SDL_ttf
-    if (TTF_Init() < 0) {
+    if (TTF_Init() == 0) {
         SDL_Log("TTF_Init failed: %s", SDL_GetError());
         SDL_Quit();
         return 1;
@@ -241,16 +241,18 @@ int main(int argc, char *argv[]) {
             // Render node text (centered above square)
             if (node_text[0] != '\0') {
                 int text_width, text_height;
-                if (TTF_GetStringSize(font, node_text, strlen(node_text), &text_width, &text_height)) { // SDL 3.x return bool
+                if (TTF_GetStringSize(font, node_text, strlen(node_text), &text_width, &text_height)) {
                     float text_x = node_x - text_width / 2.0f; // Center horizontally
                     float text_y = node_y - node_size / 2.0f - text_height - 10.0f; // Above square
                     render_text(node_text, text_x, text_y, font, window, cam_x, cam_y, cam_scale);
+                    SDL_Log("Node %d text='%s', width=%d, height=%d, pos=(%.1f, %.1f)", i, node_text, text_width, text_height, text_x, text_y);
                 } else {
-                    // SDL_Log("TTF_GetStringSize failed for text '%s': %s", node_text, SDL_GetError());
+                    SDL_Log("TTF_GetStringSize failed for text '%s': %s", node_text, SDL_GetError());
                     // Fallback: approximate centering
                     float text_x = node_x - node_size / 4.0f;
                     float text_y = node_y - node_size / 2.0f - 20.0f;
                     render_text(node_text, text_x, text_y, font, window, cam_x, cam_y, cam_scale);
+                    SDL_Log("Node %d fallback text='%s', pos=(%.1f, %.1f)", i, node_text, text_x, text_y);
                 }
             }
         }
@@ -259,13 +261,15 @@ int main(int argc, char *argv[]) {
         const char *text = lua_utils_get_string(L, "config", "text", "Hello, World!");
         if (text[0] != '\0') {
             int text_width, text_height;
-            if (TTF_GetStringSize(font, text, strlen(text), &text_width, &text_height)) { // SDL 3.x return bool
+            if (TTF_GetStringSize(font, text, strlen(text), &text_width, &text_height)) {
                 float text_x = 10.0f; // Keep at left edge
                 float text_y = 10.0f + text_height; // Adjust for baseline
                 render_text(text, text_x, text_y, font, window, cam_x, cam_y, cam_scale);
+                SDL_Log("Global text='%s', width=%d, height=%d, pos=(%.1f, %.1f)", text, text_width, text_height, text_x, text_y);
             } else {
-                // SDL_Log("TTF_GetStringSize failed for global text '%s': %s", text, SDL_GetError());
+                SDL_Log("TTF_GetStringSize failed for global text '%s': %s", text, SDL_GetError());
                 render_text(text, 10.0f, 10.0f, font, window, cam_x, cam_y, cam_scale);
+                SDL_Log("Global fallback text='%s', pos=(%.1f, %.1f)", text, 10.0f, 10.0f);
             }
         }
 
